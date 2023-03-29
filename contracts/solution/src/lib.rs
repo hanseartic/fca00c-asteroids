@@ -18,6 +18,7 @@ impl Solution {
 
         // YOUR CODE START
 
+        engine.p_shoot();
         // YOUR CODE END
     }
 }
