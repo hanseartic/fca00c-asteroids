@@ -1,0 +1,28 @@
+[package]
+name = "logging-engine"
+version = "0.0.0"
+license = "Apache-2.0"
+edition = "2021"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+soroban-sdk = { workspace = true }
+
+[dev_dependencies]
+soroban-sdk = { workspace = true, features = ["testutils"] }
+
+[profile.release]
+debug-assertions = true
+opt-level = 0
+overflow-checks = true
+debug = 2
+strip = "symbols"
+panic = "abort"
+codegen-units = 1
+lto = false
+
+[workspace.dependencies.soroban-sdk]
+version = "0.6.0"
