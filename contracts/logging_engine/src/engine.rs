@@ -1,13 +1,27 @@
-use soroban_sdk::{contractimpl, Env, Map};
+use soroban_sdk::{contractimpl, log, BytesN, Env, Map};
 mod game_engine {
     soroban_sdk::contractimport!(file = "../game_engine.wasm");
 }
-use game_engine::Contract;
+
+const ENGINE_ID: &str = "engine";
 
 pub struct LoggingEngine;
 #[contractimpl]
-impl Contract for LoggingEngine {
-    fn init(
+impl LoggingEngine {
+    pub fn wrap(env: Env, engine_id: BytesN<32>) {
+        env.storage().set(&ENGINE_ID, &engine_id);
+        log!(&env, "🗒️ logger engine taking notes");
+    }
+
+    fn engine_id(env: Env) -> BytesN<32> {
+        env.storage().get(&ENGINE_ID).unwrap().unwrap()
+    }
+    fn get_engine(env: &Env) -> game_engine::Client {
+        game_engine::Client::new(&env, &Self::engine_id(env.clone()))
+    }
+
+    /// wrapping interface implemention
+    pub fn init(
         env: Env,
         move_step: u32,
         laser_range: u32,
@@ -18,36 +32,50 @@ impl Contract for LoggingEngine {
         asteroid_density: u32,
         pod_density: u32,
     ) {
-        todo!("needs implementation")
+        if !env.storage().has(&ENGINE_ID) {
+            log!(&env, "Call 'wrap' first");
+            panic!();
+        }
+
+        Self::get_engine(&env).init(
+            &move_step,
+            &laser_range,
+            &seed,
+            &view_range,
+            &fuel,
+            &asteroid_reward,
+            &asteroid_density,
+            &pod_density,
+        );
     }
-    fn p_turn(env: Env, direction: game_engine::Direction) -> Result<(), game_engine::Error> {
-        todo!("needs implementation")
+    pub fn p_turn(env: Env, direction: game_engine::Direction) -> Result<(), game_engine::Error> {
+        Ok(Self::get_engine(&env).p_turn(&direction))
     }
-    fn p_move(env: Env, times: Option<u32>) -> Result<(), game_engine::Error> {
-        todo!("needs implementation")
+    pub fn p_move(env: Env, times: Option<u32>) -> Result<(), game_engine::Error> {
+        Ok(Self::get_engine(&env).p_move(&times))
     }
-    fn p_shoot(env: Env) -> Result<(), game_engine::Error> {
-        todo!("needs implementation")
+    pub fn p_shoot(env: Env) -> Result<(), game_engine::Error> {
+        Ok(Self::get_engine(&env).p_shoot())
     }
-    fn p_harvest(env: Env) -> Result<(), game_engine::Error> {
-        todo!("needs implementation")
+    pub fn p_harvest(env: Env) -> Result<(), game_engine::Error> {
+        Ok(Self::get_engine(&env).p_harvest())
     }
-    fn p_upgrade(env: Env) -> Result<(), game_engine::Error> {
-        todo!("needs implementation")
+    pub fn p_upgrade(env: Env) -> Result<(), game_engine::Error> {
+        Ok(Self::get_engine(&env).p_upgrade())
     }
-    fn p_pos(env: Env) -> game_engine::Point {
-        todo!("needs implementation")
+    pub fn p_pos(env: Env) -> game_engine::Point {
+        Self::get_engine(&env).p_pos()
     }
-    fn p_dir(env: Env) -> game_engine::Direction {
-        todo!("needs implementation")
+    pub fn p_dir(env: Env) -> game_engine::Direction {
+        Self::get_engine(&env).p_dir()
     }
-    fn p_points(env: Env) -> u32 {
-        todo!("needs implementation")
+    pub fn p_points(env: Env) -> u32 {
+        Self::get_engine(&env).p_points()
     }
-    fn p_fuel(env: Env) -> u32 {
-        todo!("needs implementation")
+    pub fn p_fuel(env: Env) -> u32 {
+        Self::get_engine(&env).p_fuel()
     }
-    fn get_map(env: Env) -> Map<game_engine::Point, game_engine::MapElement> {
-        todo!("needs implementation")
+    pub fn get_map(env: Env) -> Map<game_engine::Point, game_engine::MapElement> {
+        Self::get_engine(&env).get_map()
     }
 }
