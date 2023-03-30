@@ -1,5 +1,5 @@
 use soroban_sdk::{contractimpl, log, panic_with_error, vec, BytesN, Env, Map, Vec};
-use crate::types::{Action, ActionItem, ProxyError};
+use crate::types::{Action, ActionItem, LogFormat, LogLevel, ProxyError};
 
 mod game_engine {
     soroban_sdk::contractimport!(file = "../game_engine.wasm");
@@ -51,6 +51,42 @@ impl LoggingEngine {
 
         actions.push_back(add_action);
         env.storage().set(&ACTIONS, &actions);
+    }
+
+    pub fn get_logs(env: Env, level: LogLevel) {
+        log!(&env, "\n");
+        if LogLevel::Quiet == level {
+            log!(&env, "🤷 `LogLevel::Quiet` won't output any logs.");
+            return;
+        }
+        log!(&env, "📼 here are the recorded steps:\n");
+
+        log!(&env, "\n==< MEANING >==\n");
+        match level {
+            LogLevel::Human => {
+                log!(&env, "🧰: upgrade");
+                log!(&env, "🚶: move");
+                log!(&env, "⇔⇕: turning");
+                log!(&env, "🔫🎆[🎆[🎆]]: hit(s)");
+                log!(&env, "⛽: harvest");
+            }
+            LogLevel::Machine => {
+                log!(&env, "0: upgrade");
+                log!(&env, "1..3: hit");
+                log!(&env, "4: harvest");
+                log!(&env, "8..15: turning");
+                log!(&env, "16..: move");
+            }
+            _ => (),
+        };
+
+        log!(&env, "\n===< STEPS >===\n");
+        for a_i in Self::actions(env.clone()) {
+            if let Ok(a) = a_i {
+                a.log_format(&env, &level);
+            }
+        }
+        log!(&env, "\n===============\n");
     }
 
     /// wrapping interface implemention
@@ -132,5 +168,54 @@ impl LoggingEngine {
     }
     pub fn get_map(env: Env) -> Map<game_engine::Point, game_engine::MapElement> {
         Self::get_engine(&env).get_map()
+    }
+}
+
+impl LogFormat for ActionItem {
+    fn log_format(&self, env: &Env, level: &LogLevel) {
+        match &self.0 {
+            Action::Harvest => match level {
+                LogLevel::Human => log!(&env, "⛽"),
+                LogLevel::Machine => log!(&env, "4"),
+                _ => (),
+            },
+            Action::Upgrade => match level {
+                LogLevel::Human => log!(&env, "🧰"),
+                LogLevel::Machine => log!(&env, "0"),
+                _ => (),
+            },
+            Action::Shoot => match level {
+                LogLevel::Human => {
+                    match self.1 {
+                        3 => log!(&env, "🔫🎆🎆🎆"),
+                        2 => log!(&env, "🔫🎆🎆"),
+                        1 => log!(&env, "🔫🎆"),
+                        _ => log!(&env, "🔫"),
+                    };
+                }
+                LogLevel::Machine => log!(&env, "{}", self.1 as u32),
+                _ => (),
+            },
+            Action::Move => match level {
+                LogLevel::Human => log!(&env, "🚶 {}", self.1),
+                LogLevel::Machine => log!(&env, "{}", self.1 as u32 + 15),
+                _ => (),
+            },
+            Action::Turn => match level {
+                LogLevel::Human => match self.1 {
+                    0 => log!(&env, "⇧"),
+                    1 => log!(&env, "⇗"),
+                    2 => log!(&env, "⇒"),
+                    3 => log!(&env, "⇘"),
+                    4 => log!(&env, "⇩"),
+                    5 => log!(&env, "⇙"),
+                    6 => log!(&env, "⇦"),
+                    7 => log!(&env, "⇖"),
+                    _ => (),
+                },
+                LogLevel::Machine => log!(&env, "{}", (self.1 as u32) + 8),
+                _ => (),
+            },
+        };
     }
 }

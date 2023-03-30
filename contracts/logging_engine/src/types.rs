@@ -1,4 +1,4 @@
-use soroban_sdk::{contracterror, contracttype};
+use soroban_sdk::{contracterror, contracttype, Env};
 
 #[contracterror]
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd)]
@@ -21,3 +21,15 @@ pub enum Action {
 #[contracttype]
 #[derive(Copy, Clone)]
 pub struct ActionItem(pub Action, pub u32);
+
+#[contracttype]
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum LogLevel {
+    Quiet,
+    Human,
+    Machine,
+}
+
+pub trait LogFormat {
+    fn log_format(&self, env: &Env, level: &LogLevel);
+}

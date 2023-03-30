@@ -75,14 +75,12 @@ fn fca00c_fast() {
 
     solution.solve(&proxy_engine_id);
 
+    engine.get_logs(&logging_contract::LogLevel::Human);
+    engine.get_logs(&logging_contract::LogLevel::Machine);
+    engine.get_logs(&logging_contract::LogLevel::Quiet);
+
     let logs = env.logger().all();
     println!("{}", logs.join("\n"));
-
-    for action in engine.actions() {
-        if let Ok(a) = action {
-            println!("{:?}", a);
-        }
-    }
 
     let points = engine.p_points();
 
