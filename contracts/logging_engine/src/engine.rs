@@ -1,8 +1,11 @@
-use soroban_sdk::{contractimpl, log, BytesN, Env, Map};
+use soroban_sdk::{contractimpl, log, panic_with_error, vec, BytesN, Env, Map, Vec};
+use crate::types::{Action, ActionItem, ProxyError};
+
 mod game_engine {
     soroban_sdk::contractimport!(file = "../game_engine.wasm");
 }
 
+const ACTIONS: &str = "actions";
 const ENGINE_ID: &str = "engine";
 
 pub struct LoggingEngine;
@@ -10,6 +13,8 @@ pub struct LoggingEngine;
 impl LoggingEngine {
     pub fn wrap(env: Env, engine_id: BytesN<32>) {
         env.storage().set(&ENGINE_ID, &engine_id);
+        env.storage()
+            .set::<&str, Vec<ActionItem>>(&ACTIONS, &vec![&env]);
         log!(&env, "🗒️ logger engine taking notes");
     }
 
@@ -18,6 +23,15 @@ impl LoggingEngine {
     }
     fn get_engine(env: &Env) -> game_engine::Client {
         game_engine::Client::new(&env, &Self::engine_id(env.clone()))
+    }
+
+    pub fn actions(env: Env) -> Vec<ActionItem> {
+        env.storage().get(&ACTIONS).unwrap().unwrap()
+    }
+    fn log_action(env: &Env, action: &ActionItem) {
+        let mut actions = Self::actions(env.clone());
+        actions.push_back(*action);
+        env.storage().set(&ACTIONS, &actions);
     }
 
     /// wrapping interface implemention
@@ -34,7 +48,7 @@ impl LoggingEngine {
     ) {
         if !env.storage().has(&ENGINE_ID) {
             log!(&env, "Call 'wrap' first");
-            panic!();
+            panic_with_error!(&env, ProxyError::NotWrapped);
         }
 
         Self::get_engine(&env).init(
@@ -49,19 +63,41 @@ impl LoggingEngine {
         );
     }
     pub fn p_turn(env: Env, direction: game_engine::Direction) -> Result<(), game_engine::Error> {
-        Ok(Self::get_engine(&env).p_turn(&direction))
+        if let Err(Ok(e)) = Self::get_engine(&env).try_p_turn(&direction) {
+            return Err(e);
+        }
+        Self::log_action(&env, &ActionItem(Action::Turn, direction as u32));
+        Ok(())
     }
     pub fn p_move(env: Env, times: Option<u32>) -> Result<(), game_engine::Error> {
-        Ok(Self::get_engine(&env).p_move(&times))
+        if let Err(Ok(e)) = Self::get_engine(&env).try_p_move(&times) {
+            return Err(e);
+        }
+        Self::log_action(&env, &ActionItem(Action::Move, 1));
+        Ok(())
     }
     pub fn p_shoot(env: Env) -> Result<(), game_engine::Error> {
-        Ok(Self::get_engine(&env).p_shoot())
+        let p = Self::get_engine(&env).p_points();
+        if let Err(Ok(e)) = Self::get_engine(&env).try_p_shoot() {
+            return Err(e);
+        }
+        let hits = Self::get_engine(&env).p_points() - p;
+        Self::log_action(&env, &ActionItem(Action::Shoot, hits));
+        Ok(())
     }
     pub fn p_harvest(env: Env) -> Result<(), game_engine::Error> {
-        Ok(Self::get_engine(&env).p_harvest())
+        if let Err(Ok(e)) = Self::get_engine(&env).try_p_harvest() {
+            return Err(e);
+        }
+        Self::log_action(&env, &ActionItem(Action::Harvest, 1));
+        Ok(())
     }
     pub fn p_upgrade(env: Env) -> Result<(), game_engine::Error> {
-        Ok(Self::get_engine(&env).p_upgrade())
+        if let Err(Ok(e)) = Self::get_engine(&env).try_p_upgrade() {
+            return Err(e);
+        }
+        Self::log_action(&env, &ActionItem(Action::Upgrade, 1));
+        Ok(())
     }
     pub fn p_pos(env: Env) -> game_engine::Point {
         Self::get_engine(&env).p_pos()
