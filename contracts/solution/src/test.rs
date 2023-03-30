@@ -40,9 +40,8 @@ fn fca00c_fast() {
     let env = Env::default();
     let proxy_engine_id = env.register_contract_wasm(None, logging_contract::WASM);
     let engine_id = env.register_contract_wasm(None, GameEngineWASM);
-    let engine = GameEngine::new(&env, &proxy_engine_id);
-
-    logging_contract::Client::new(&env, &proxy_engine_id).wrap(&engine_id);
+    let engine = logging_contract::Client::new(&env, &proxy_engine_id);
+    engine.wrap(&engine_id);
 
     // DON'T CHANGE THE FOLLOWING INIT() PARAMETERS
     // Once you've submitted your contract on the FCA00C site, we will invoke
@@ -78,6 +77,12 @@ fn fca00c_fast() {
 
     let logs = env.logger().all();
     println!("{}", logs.join("\n"));
+
+    for action in engine.actions() {
+        if let Ok(a) = action {
+            println!("{:?}", a);
+        }
+    }
 
     let points = engine.p_points();
 
