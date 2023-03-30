@@ -30,7 +30,26 @@ impl LoggingEngine {
     }
     fn log_action(env: &Env, action: &ActionItem) {
         let mut actions = Self::actions(env.clone());
-        actions.push_back(*action);
+        let add_action: ActionItem;
+
+        if let Some(Ok(last_action_item)) = actions.last() {
+            match last_action_item {
+                ActionItem(Action::Turn, _) if action.0 == Action::Turn => {
+                    actions.pop_back();
+                    add_action = action.clone();
+                }
+                ActionItem(Action::Move, _) if action.0 == Action::Move => {
+                    actions.pop_back();
+                    add_action = ActionItem(last_action_item.0, last_action_item.1 + (action.1 as u32));
+
+                }
+                _ => add_action = *action,
+            }
+        } else {
+            add_action = *action;
+        }
+
+        actions.push_back(add_action);
         env.storage().set(&ACTIONS, &actions);
     }
 
@@ -73,7 +92,7 @@ impl LoggingEngine {
         if let Err(Ok(e)) = Self::get_engine(&env).try_p_move(&times) {
             return Err(e);
         }
-        Self::log_action(&env, &ActionItem(Action::Move, 1));
+        Self::log_action(&env, &ActionItem(Action::Move, times.unwrap_or(1)));
         Ok(())
     }
     pub fn p_shoot(env: Env) -> Result<(), game_engine::Error> {
